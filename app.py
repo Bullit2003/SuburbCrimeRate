@@ -4,27 +4,34 @@ import sqlite3
 from os import path
 
 app = Flask(__name__)
-api = Api(app, version='1.0', title='Data Service for Crime rate information by suburb',
-           description='This is a Flask-Restplus data service that allows a client to consume APIs related to NSW crime rate information by suburb.',
+api = Api(app, version='1.0', title='Data Service for crime rate information by suburb',
+          description='This is a Flask-Restplus data service that allows a client to consume APIs to provide crime '
+                      'rate data for NSW suburbs from 1995 to 2018.',
+          contact='Robertus Van Den Braak', contact_email='robsphone@iinet.net.au',
+          default='Suburb Crime', default_label='Provide crime rate information by suburb'
           )
 
-#Database helper
+# Database helper
 ROOT = path.dirname(path.realpath(__file__))
+
+
 def connect_db():
     sql = sqlite3.connect(path.join(ROOT, "SUBURB_CRIME_RATE.sqlite"))
     sql.row_factory = sqlite3.Row
     return sql
+
 
 def get_db():
     if not hasattr(g, 'sqlite_db'):
         g.sqlite_db = connect_db()
     return g.sqlite_db
 
+
 @api.route('/suburb')
 class Suburb(Resource):
     @api.response(200, 'SUCCESSFUL: Contents successfully loaded')
     @api.response(204, 'NO CONTENT: No content in database')
-    @api.doc(description='Retrieving all suburbs from the database.')
+    @api.doc(description='Returns all suburbs available in the database.')
     def get(self):
         db = get_db()
         details_cur = db.execute('select SUBURB_ID, NAME from SUBURB')
@@ -33,11 +40,8 @@ class Suburb(Resource):
         return_values = []
 
         for detail in details:
-            detail_dict = {}
-            detail_dict['suburbId'] = detail['SUBURB_ID']
-            detail_dict['name'] = detail['NAME']\
-
-            return_values.append(detail_dict)
+            detail_dict = {'suburbId': detail['SUBURB_ID'], 'name': detail['NAME']}
+        return_values.append(detail_dict)
 
         return make_response(jsonify(return_values), 200)
 
@@ -46,7 +50,10 @@ class Suburb(Resource):
 class CrimeRate(Resource):
     @api.response(200, 'SUCCESSFUL: Contents successfully loaded')
     @api.response(204, 'NO CONTENT: No content in database')
-    @api.doc(description='Retrieving all records from the database for all suburb crime rates')
+    @api.doc(description='Retrieves all crime rate records for the specified suburb. Result set can be filtered '
+                         'by specifying start date, end date and crime category ID',
+             params={'startDate': 'YYYY-MM-DD', 'endDate': 'YYYY-MM-DD', 'crimeCategoryId': 'Integer referencing a '
+                                                                                            'Crime_Category_ID'})
     def get(self, SUBURB):
         startDate = request.args.get('startDate')
         endDate = request.args.get('endDate')
@@ -70,14 +77,9 @@ class CrimeRate(Resource):
         return_values = []
 
         for detail in details:
-            detail_dict = {}
-            detail_dict['name'] = detail['NAME']
-            detail_dict['crimeCategoryId'] = detail['CRIME_CATEGORY_ID']
-            detail_dict['offence'] = detail['OFFENCE']
-            detail_dict['subcategory'] = detail['SUBCATEGORY']
-            detail_dict['startDate'] = detail['START_DATE']
-            detail_dict['endDate'] = detail['END_DATE']
-            detail_dict['rate'] = detail['RATE']\
+            detail_dict = {'name': detail['NAME'], 'crimeCategoryId': detail['CRIME_CATEGORY_ID'],
+                           'offence': detail['OFFENCE'], 'subcategory': detail['SUBCATEGORY'],
+                           'startDate': detail['START_DATE'], 'endDate': detail['END_DATE'], 'rate': detail['RATE']}
 
             return_values.append(detail_dict)
 
@@ -88,16 +90,18 @@ class CrimeRate(Resource):
 class CrimeRateSummary(Resource):
     @api.response(200, 'SUCCESSFUL: Contents successfully loaded')
     @api.response(204, 'NO CONTENT: No content in database')
-    @api.doc(description='Retrieving all records from the database for all suburb crime rates')
+    @api.doc(description='Returns a summary total of all crime rates for the specified suburb from 1995 to 2018.'
+                         'A start date, end date parameter can be added to limit the summary',
+             params={'startDate': 'YYYY-MM-DD', 'endDate': 'YYYY-MM-DD'})
     def get(self, SUBURB):
         startDate = request.args.get('startDate')
         endDate = request.args.get('endDate')
         db = get_db()
-        select = "SELECT NAME, CRIME_CATEGORY.OFFENCE, CRIME_CATEGORY.SUBCATEGORY, SUM(RATE) AS TOTAL_RATE "\
-            "FROM SUBURB "\
-            "JOIN CRIME_RATE ON SUBURB.SUBURB_ID = CRIME_RATE.SUBURB_ID "\
-            "JOIN CRIME_CATEGORY ON CRIME_CATEGORY.CRIME_CATEGORY_ID = CRIME_RATE.CRIME_CATEGORY_ID "\
-            "WHERE NAME = '%s' "
+        select = "SELECT NAME, CRIME_CATEGORY.OFFENCE, CRIME_CATEGORY.SUBCATEGORY, SUM(RATE) AS TOTAL_RATE " \
+                 "FROM SUBURB " \
+                 "JOIN CRIME_RATE ON SUBURB.SUBURB_ID = CRIME_RATE.SUBURB_ID " \
+                 "JOIN CRIME_CATEGORY ON CRIME_CATEGORY.CRIME_CATEGORY_ID = CRIME_RATE.CRIME_CATEGORY_ID " \
+                 "WHERE NAME = '%s' "
         group = "GROUP BY NAME, CRIME_CATEGORY.OFFENCE, CRIME_CATEGORY.SUBCATEGORY"
         if startDate:
             select = select + " AND START_DATE >= '" + startDate + "'"
@@ -111,21 +115,18 @@ class CrimeRateSummary(Resource):
         return_values = []
 
         for detail in details:
-            detail_dict = {}
-            detail_dict['name'] = detail['NAME']
-            detail_dict['offence'] = detail['OFFENCE']
-            detail_dict['subcategory'] = detail['SUBCATEGORY']
-            detail_dict['rate'] = detail['TOTAL_RATE']\
-
+            detail_dict = {'name': detail['NAME'], 'offence': detail['OFFENCE'], 'subcategory': detail['SUBCATEGORY'],
+                           'rate': detail['TOTAL_RATE']}
             return_values.append(detail_dict)
 
         return make_response(jsonify(return_values), 200)
+
 
 @api.route('/crimeCategory', methods=['GET'])
 class CrimeCategory(Resource):
     @api.response(200, 'SUCCESSFUL: Contents successfully loaded')
     @api.response(204, 'NO CONTENT: No content in database')
-    @api.doc(description='Retrieving all records from the database for all crime categories.')
+    @api.doc(description='Returns all crime categories available in the database.')
     def get(self):
         db = get_db()
         details_cur = db.execute(
@@ -135,14 +136,12 @@ class CrimeCategory(Resource):
         return_values = []
 
         for detail in details:
-            detail_dict = {}
-            detail_dict['crimeCategoryId'] = detail['CRIME_CATEGORY_ID']
-            detail_dict['offence'] = detail['OFFENCE']
-            detail_dict['subcategory'] = detail['SUBCATEGORY']\
-
+            detail_dict = {'crimeCategoryId': detail['CRIME_CATEGORY_ID'], 'offence': detail['OFFENCE'],
+                           'subcategory': detail['SUBCATEGORY']}
             return_values.append(detail_dict)
 
         return make_response(jsonify(return_values), 200)
+
 
 if __name__ == '__main__':
     app.run()
