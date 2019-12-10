@@ -4,14 +4,14 @@ import sqlite3
 from os import path
 
 app = Flask(__name__)
-api = Api(app, version='1.0', title='Data Service for NSW Crime rate information by suburb',
+api = Api(app, version='1.0', title='Data Service for Crime rate information by suburb',
            description='This is a Flask-Restplus data service that allows a client to consume APIs related to NSW crime rate information by suburb.',
           )
 
 #Database helper
 ROOT = path.dirname(path.realpath(__file__))
 def connect_db():
-    sql = sqlite3.connect(path.join(ROOT, "NSW_CRIME_RATE.sqlite"))
+    sql = sqlite3.connect(path.join(ROOT, "SUBURB_CRIME_RATE.sqlite"))
     sql.row_factory = sqlite3.Row
     return sql
 
@@ -48,21 +48,31 @@ class CrimeRate(Resource):
     @api.response(204, 'NO CONTENT: No content in database')
     @api.doc(description='Retrieving all records from the database for all suburb crime rates')
     def get(self, SUBURB):
+        startDate = request.args.get('startDate')
+        endDate = request.args.get('endDate')
+        categoryID = request.args.get('crimeCategoryId')
         db = get_db()
-        details_cur = db.execute(
-            'SELECT NAME, CRIME_CATEGORY.OFFENCE, CRIME_CATEGORY.SUBCATEGORY, START_DATE, END_DATE, RATE '
-            'FROM SUBURB '
-            'JOIN CRIME_RATE ON SUBURB.SUBURB_ID = CRIME_RATE.SUBURB_ID '
-            'JOIN CRIME_CATEGORY ON CRIME_CATEGORY.CRIME_CATEGORY_ID = CRIME_RATE.CRIME_CATEGORY_ID '
-            'WHERE NAME = ? ', [SUBURB])
-
+        sql = "SELECT NAME, CRIME_RATE.CRIME_CATEGORY_ID, CRIME_CATEGORY.OFFENCE, CRIME_CATEGORY.SUBCATEGORY," \
+              " START_DATE, END_DATE, RATE " \
+              "FROM SUBURB " \
+              "JOIN CRIME_RATE ON SUBURB.SUBURB_ID = CRIME_RATE.SUBURB_ID " \
+              "JOIN CRIME_CATEGORY ON CRIME_CATEGORY.CRIME_CATEGORY_ID = CRIME_RATE.CRIME_CATEGORY_ID " \
+              "WHERE NAME = '%s' "
+        if startDate:
+            sql = sql + " AND START_DATE >= '" + startDate + "'"
+        if endDate:
+            sql = sql + " AND END_DATE <= '" + endDate + "'"
+        if categoryID:
+            sql = sql + " AND CRIME_RATE.CRIME_CATEGORY_ID = '" + categoryID + "'"
+        sql = sql + " ORDER BY CRIME_RATE.CRIME_CATEGORY_ID ASC, START_DATE ASC"
+        details_cur = db.execute(sql % SUBURB)
         details = details_cur.fetchall()
-
         return_values = []
 
         for detail in details:
             detail_dict = {}
             detail_dict['name'] = detail['NAME']
+            detail_dict['crimeCategoryId'] = detail['CRIME_CATEGORY_ID']
             detail_dict['offence'] = detail['OFFENCE']
             detail_dict['subcategory'] = detail['SUBCATEGORY']
             detail_dict['startDate'] = detail['START_DATE']
@@ -72,6 +82,7 @@ class CrimeRate(Resource):
             return_values.append(detail_dict)
 
         return make_response(jsonify(return_values), 200)
+
 
 @api.route('/crimeRateSummary/<string:SUBURB>', methods=['GET'])
 class CrimeRateSummary(Resource):
@@ -93,7 +104,7 @@ class CrimeRateSummary(Resource):
         if endDate:
             select = select + " AND END_DATE <= '" + endDate + "'"
         sql = select + group
-        details_cur = db.execute(sql % (SUBURB))
+        details_cur = db.execute(sql % SUBURB)
 
         details = details_cur.fetchall()
 

@@ -1,5 +1,5 @@
 #########################################################################################################
-#   Program Name : NSWCrimeRateDatabase.py                                                              #
+#   Program Name : CrimeRateDatabase.py                                                              #
 #   Program Description:                                                                                #
 #   This program prepares SQLite tables containing data about crime rates in NSW.                     #
 #                                                                                                       #
@@ -14,8 +14,8 @@ import csv
 
 def execute_sql(connect, sql_command):
     """ create a table from the create_table_sql statement
-    :param conn: Connection object
-    :param create_table_sql: a CREATE TABLE statement
+    :param connect: Connection object
+    :param sql_command: a SQL string
     :return:
     """
     try:
@@ -47,6 +47,12 @@ def file_len(fname):
             pass
     return i + 1
 
+
+def month_num_to_string(month_in):
+    month2string = str(month_in)
+    if month_in < 10:
+        month2string = "0" + month2string
+    return month2string
 
 sql_drop_crime_rate_table = """DROP TABLE IF EXISTS CRIME_RATE
                             ; """
@@ -80,9 +86,9 @@ sql_create_crime_rate_table = '''   CREATE TABLE CRIME_RATE (
                                 ); '''
 
 #######################################################################
-# Create NSW_CRIME_RATE Tables                                        #
+# Create SUBURB_CRIME_RATE Tables                                        #
 #######################################################################
-conn = sqlite3.connect('NSW_CRIME_RATE.sqlite')
+conn = sqlite3.connect('SUBURB_CRIME_RATE.sqlite')
 
 # create tables
 if conn is not None:
@@ -140,12 +146,14 @@ for line in creader:
         n = 3
         for year in range(1995, 2019):
             for month in range(1, 13):
-                startDate = "{}-{}-1".format(year, month)
+                monthStr = month_num_to_string(month)
+                startDate = "{}-{}-01".format(year, monthStr)
                 nextMonth = month + 1
                 if nextMonth == 13:
                     nextMonth = 1
                     year += 1
-                endDate = "{}-{}-1".format(year, nextMonth)
+                nextMonthStr = month_num_to_string(nextMonth)
+                endDate = "{}-{}-01".format(year, nextMonthStr)
                 conn.execute(''' INSERT INTO CRIME_RATE (SUBURB_ID, CRIME_CATEGORY_ID, START_DATE, END_DATE, RATE)
                 VALUES(?, ?, ?, ?, ?) ''', (suburbID, offenceID, startDate, endDate, line[n]))
                 n += 1
