@@ -8,7 +8,7 @@ api = Api(app, version='1.0', title='Data Service for crime rate information by 
           description='This is a Flask-Restplus data service that allows a client to consume APIs to provide crime '
                       'rate data for NSW suburbs from 1995 to 2018.',
           contact='Robertus Van Den Braak', contact_email='robsphone@iinet.net.au',
-          default='Suburb Crime', default_label='Provides crime rate information by suburb'
+          default='Suburb Crime', default_label='Click here to list available end points to display suburb crime rates.'
           )
 
 # Database helper
