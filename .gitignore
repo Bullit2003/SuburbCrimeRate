@@ -2,3 +2,5 @@
 */workspace.xml
 *.sqlite
 *.sqlite-journal
+*.csv
+*/*.xlsx
