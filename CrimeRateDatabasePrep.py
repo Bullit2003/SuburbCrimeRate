@@ -1,7 +1,7 @@
 #########################################################################################################
-#   Program Name : CrimeRateDatabase.py                                                              #
+#   Program Name : CrimeRateDatabase.py                                                                 #
 #   Program Description:                                                                                #
-#   This program prepares SQLite tables containing data about crime rates in NSW.                     #
+#   This program prepares SQLite tables containing data about crime rates in NSW.                       #
 #                                                                                                       #
 #   Comment                                         Date                  Author                        #
 #   ================================                ==========            ================              #
